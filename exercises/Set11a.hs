@@ -23,14 +23,15 @@ import Mooc.Todo
 -- first line should be HELLO and the second one WORLD
 
 hello :: IO ()
-hello = todo
-
+hello = do 
+  putStrLn "HELLO"
+  putStrLn "WORLD"
 ------------------------------------------------------------------------------
 -- Ex 2: define the IO operation greet that takes a name as an
 -- argument and prints a line "HELLO name".
 
 greet :: String -> IO ()
-greet name = todo
+greet name = putStrLn ("HELLO " ++ name)
 
 ------------------------------------------------------------------------------
 -- Ex 3: define the IO operation greet2 that reads a name from the
@@ -40,7 +41,9 @@ greet name = todo
 -- Try to use the greet operation in your solution.
 
 greet2 :: IO ()
-greet2 = todo
+greet2 = do
+  name <- getLine
+  greet name
 
 ------------------------------------------------------------------------------
 -- Ex 4: define the IO operation readWords n which reads n lines from
@@ -54,7 +57,11 @@ greet2 = todo
 --   ["alice","bob","carl"]
 
 readWords :: Int -> IO [String]
-readWords n = todo
+readWords 0 = return []
+readWords n = do 
+  word <- getLine
+  words <- readWords (n-1)
+  return (sort (word:words))
 
 ------------------------------------------------------------------------------
 -- Ex 5: define the IO operation readUntil f, which reads lines from
@@ -70,14 +77,41 @@ readWords n = todo
 --   STOP
 --   ["bananas","garlic","pakchoi"]
 
+--readUntil :: (String -> Bool) -> IO [String]
+--readUntil f = do
+--  line <- getLine
+--  unless (f line) $ do
+--    lines <- readUntil f
+--  (return (line:lines))
+
 readUntil :: (String -> Bool) -> IO [String]
-readUntil f = todo
+readUntil f = fmap reverse (go []) where
+    go xs = do
+    x <- getLine
+    if f x == True then return xs
+                else go (x : xs)
+
+-- model solution
+
+readUntil' :: (String -> Bool) -> IO [String]
+readUntil' f = do word <- getLine
+                 if f word
+                   then return []
+                   else do words <- readUntil' f
+                           return $ word:words
 
 ------------------------------------------------------------------------------
 -- Ex 6: given n, print the numbers from n to 0, one per line
 
 countdownPrint :: Int -> IO ()
-countdownPrint n = todo
+countdownPrint n | n == 0 = print n
+                 | otherwise = do
+                                 print n
+                                 countdownPrint (n-1)
+
+-- model solution
+countdownPrint' :: Int -> IO ()
+countdownPrint' n = mapM_ print [n,n-1..0]
 
 ------------------------------------------------------------------------------
 -- Ex 7: isums n should read n numbers from the user (one per line) and
@@ -92,7 +126,16 @@ countdownPrint n = todo
 --   5. produces 9
 
 isums :: Int -> IO Int
-isums n = todo
+isums 0 = return 0
+isums n = isums' n 0
+
+isums' :: Int -> Int -> IO Int
+isums' 0 acc = return acc
+isums' n acc = do
+  i <- readLn
+  print (i+acc)
+  x <- isums' (n-1) (i+acc)
+  return x
 
 ------------------------------------------------------------------------------
 -- Ex 8: when is a useful function, but its first argument has type
@@ -100,8 +143,16 @@ isums n = todo
 -- argument has type IO Bool.
 
 whenM :: IO Bool -> IO () -> IO ()
-whenM cond op = todo
+whenM cond op = do
+  b <- cond
+  if b then op else return ()
 
+-- model solution
+
+whenM' :: IO Bool -> IO () -> IO ()
+whenM' cond op = do b <- cond
+                    when b op
+  
 ------------------------------------------------------------------------------
 -- Ex 9: implement the while loop. while condition operation should
 -- run operation as long as condition returns True.
@@ -120,7 +171,19 @@ ask = do putStrLn "Y/N?"
          return $ line == "Y"
 
 while :: IO Bool -> IO () -> IO ()
-while cond op = todo
+while cond op = do
+  b <- cond
+  if b then
+    do
+      op
+      while cond op
+    else
+      return ()
+
+while' :: IO Bool -> IO () -> IO ()
+while' cond op = whenM' cond iteration
+  where iteration = do op
+                       while' cond op
 
 ------------------------------------------------------------------------------
 -- Ex 10: given a string and an IO operation, print the string, run
@@ -140,4 +203,8 @@ while cond op = todo
 --     4. returns the line read from the user
 
 debug :: String -> IO a -> IO a
-debug s op = todo
+debug s op = do 
+  putStrLn s
+  x <- op
+  putStrLn s
+  return x

@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (i,j) = (i+1,1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (i,j) = (i,j+1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -100,7 +100,29 @@ nextCol (i,j) = todo
 -- takes O(n^3) time. Just ignore the previous sentence, if you're not familiar
 -- with the O-notation.)
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+prettyPrint n xs = insertQ (sort xs) (1,1) (createGrid n n)
+
+createGrid :: Size -> Size -> String
+createGrid n 0 = ""
+createGrid n m = ns ++ "\n" ++ createGrid n (m-1)
+  where ns = replicate n '.'
+
+-- take list of coords, grid (as a [Char]) and coords to iterate through
+
+
+insertQ :: [Coord] -> Coord -> [Char] -> [Char]
+insertQ [] _ grid = grid
+insertQ ps@(pos:positions) (i,j) (g:grid) | fst pos == i && snd pos == j = 'Q' : insertQ positions (i,j+1) grid
+                                          | g == '\n'                    = '\n' : insertQ ps (nextRow (i,j)) grid
+                                          | otherwise                    = '.' : insertQ ps (i,j+1) grid
+
+{-
+prettyPrint' n b@(x:xs) (i,j) | j > n = '\n' : prettyPrint' n b (nextRow (i,j))
+                              | i > n = []
+                              | length b == 0 = '.' : prettyPrint' n b (i,j+1)
+                              | otherwise = if fst x == i && snd x == j then 'Q' : prettyPrint' n xs (i,j+1) else '.' : prettyPrint' n b (i,j+1) 
+prettyPrint' n [] (i,j) | i >= n && j >= n = "\n"
+-}
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -124,16 +146,17 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (i,j) (k,l) = i == k
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (i,j) (k,l) = j == l
 
 sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag (i,j) (k,l) | i == k && j == l = True
+                     | otherwise = i /= k && abs (i - j) == abs (k - l)
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (i,j) (k,l) = abs (i - k) == abs (j - l)
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -180,16 +203,48 @@ sameAntidiag (i,j) (k,l) = todo
 --
 -- Hint: Use the relations of the previous exercise!
 --
--- Lists of coordinates of queens will be later used in a Last In
--- First Out (LIFO) manner, so we give this type the alias Stack:
+-- Lists of coordinates of queens will be later used in a First in Last Out
+-- (LIFO) manner, so we give this type the alias Stack:
 -- https://en.wikipedia.org/wiki/Stack_(abstract_data_type)
 
 type Size      = Int
 type Candidate = Coord
 type Stack     = [Coord]
 
+inDanger :: Candidate -> Coord -> Bool
+inDanger coord pos = sameRow coord pos || sameCol coord pos || sameDiag coord pos || sameAntidiag coord pos
+
+zone :: Size -> Candidate -> Coord -> [Coord]
+zone n (i,j) pos | i >= n             = []
+                 | j > n              = zone n (nextRow (i,j)) pos
+                 | inDanger (i,j) pos = (i,j) : zone n (nextCol (i,j)) pos 
+                 | otherwise          = zone n (nextCol (i,j)) pos
+
+zones :: Size -> Stack -> [[Coord]]
+zones _ []     = []
+zones n (x:xs) = zone n (1,1) x : zones n xs
+
+zonesUnion :: Size -> Stack -> [Coord]
+zonesUnion n xs = nub $ concat (zones n xs)
+
+{-
+dangerZone :: Size -> Coord -> [Coord]
+dangerZone n (i,j) =
+  let dis = [-i + 1 .. n - i]
+      djs = [-j + 1 .. n - j]
+  in  [ (i + di, j + dj)
+      | di <- dis, dj <- djs
+      , di == dj || di == -dj || di * dj == 0
+      ]
+-}
+
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger _ []            = False
+danger coord positions = coord `elem` (zonesUnion 100 positions)
+--  where n = fst $ maximum positions
+{-danger _ []            = False
+danger coord positions = all (==True) $ map (danger' coord) positions-}
+
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -238,14 +293,10 @@ prettyPrint2 = todo
 -- If no safe spot is found for the queen on that row, fixFirst should
 -- return Nothing.
 --
--- Note: this means in particular that if the queen is already outside
--- the board, Nothing should be returned.
---
 -- Examples:
 --   fixFirst 5 [(1,1)] ==> Just [(1,1)]
 --   fixFirst 5 [(3,4)] ==> Just [(3,4)]
 --   fixFirst 5 [(1,1),(1,5)] ==> Nothing
---   fixFirst 5 [(1,6)] ==> Nothing
 --   fixFirst 5 [(1,1),(3,3)] ==> Just [(1,2),(3,3)]
 --   fixFirst 5 [(1,3),(3,3)] ==> Just [(1,4),(3,3)]
 --   fixFirst 5 [(2,1),(3,3)] ==> Just [(2,1),(3,3)]

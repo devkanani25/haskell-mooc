@@ -61,7 +61,10 @@ swapIORefs = todo
 --        replicateM l getLine
 
 doubleCall :: IO (IO a) -> IO a
-doubleCall op = todo
+doubleCall op = do
+  op' <- op
+  v <- op'
+  return v
 
 ------------------------------------------------------------------------------
 -- Ex 4: implement the analogue of function composition (the (.)
@@ -80,7 +83,11 @@ doubleCall op = todo
 --   3. return the result (of type b)
 
 compose :: (a -> IO b) -> (c -> IO a) -> c -> IO b
-compose op1 op2 c = todo
+compose op1 op2 c = do
+  ret2 <- op2 c
+  op3 <- op1 ret2
+  return op3
+  
 
 ------------------------------------------------------------------------------
 -- Ex 5: Reading lines from a file. The module System.IO defines
@@ -110,7 +117,10 @@ compose op1 op2 c = todo
 --   ["module Set11b where","","import Control.Monad"]
 
 hFetchLines :: Handle -> IO [String]
-hFetchLines = todo
+hFetchLines h = do
+  ss <- hGetContents h
+  let x = lines ss
+  return x
 
 ------------------------------------------------------------------------------
 -- Ex 6: Given a Handle and a list of line indexes, produce the lines
@@ -123,7 +133,15 @@ hFetchLines = todo
 -- handle.
 
 hSelectLines :: Handle -> [Int] -> IO [String]
-hSelectLines h nums = todo
+hSelectLines h nums = do
+  lines <- hFetchLines h
+  let selectLines = hRecursiveSelect lines nums
+  return selectLines
+  
+hRecursiveSelect :: [String] -> [Int] -> [String]
+hRecursiveSelect lines [] = []
+hRecursiveSelect lines (i:is) = lines!!(i-1) : hRecursiveSelect lines is
+  
 
 ------------------------------------------------------------------------------
 -- Ex 7: In this exercise we see how a program can be split into a
@@ -164,4 +182,10 @@ counter ("print",n) = (True,show n,n)
 counter ("quit",n)  = (False,"bye bye",n)
 
 interact' :: ((String,st) -> (Bool,String,st)) -> st -> IO st
-interact' f state = todo
+interact' f state = do
+  line <- getLine
+  let (bool,string,state') =  f (line,state)
+  putStrLn string
+  if bool then interact' f state' else return state'
+  
+  

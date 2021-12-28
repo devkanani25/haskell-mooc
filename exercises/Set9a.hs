@@ -13,12 +13,13 @@ module Set9a where
 import Data.Char
 import Data.List
 import Data.Ord
+import Data.Either
 
 import Mooc.Todo
 
 ------------------------------------------------------------------------------
 -- Ex 1: Implement a function workload that takes in the number of
--- exercises a student has to finish, and another number that counts
+-- exercise a student has to finish, and another number that counts
 -- the number of hours each exercise takes.
 --
 -- If the total number of hours needed for all exercises is over 100,
@@ -26,7 +27,9 @@ import Mooc.Todo
 -- Otherwise return "Ok."
 
 workload :: Int -> Int -> String
-workload nExercises hoursPerExercise = todo
+workload nExercises hoursPerExercise | nExercises * hoursPerExercise > 100 = "Holy moly!"
+                                     | nExercises * hoursPerExercise < 10  = "Piece of cake!"
+                                     | otherwise                           = "Ok."                                     
 
 ------------------------------------------------------------------------------
 -- Ex 2: Implement the function echo that builds a string like this:
@@ -39,7 +42,8 @@ workload nExercises hoursPerExercise = todo
 -- Hint: use recursion
 
 echo :: String -> String
-echo = todo
+echo "" = ""
+echo ss = ss ++ ", " ++ echo (tail ss)
 
 ------------------------------------------------------------------------------
 -- Ex 3: A country issues some banknotes. The banknotes have a serial
@@ -52,7 +56,12 @@ echo = todo
 -- are valid.
 
 countValid :: [String] -> Int
-countValid = todo
+countValid xss = length (filter checkNote xss)
+
+checkNote :: String -> Bool
+checkNote xs | xs!!2 == xs!!4 = True
+             | xs!!3 == xs!!5 = True
+             | otherwise      = False
 
 ------------------------------------------------------------------------------
 -- Ex 4: Find the first element that repeats two or more times _in a
@@ -64,7 +73,12 @@ countValid = todo
 --   repeated [1,2,1,2,3,3] ==> Just 3
 
 repeated :: Eq a => [a] -> Maybe a
-repeated = todo
+repeated [] = Nothing
+repeated [x] = Nothing
+repeated [x,y] = if x == y then Just x else Nothing 
+repeated (x:y:xs) = if x == y then (Just x) else repeated (y:z:ys)
+  where z = head xs
+        ys = tail xs
 
 ------------------------------------------------------------------------------
 -- Ex 5: A laboratory has been collecting measurements. Some of the
@@ -86,7 +100,9 @@ repeated = todo
 --     ==> Left "no data"
 
 sumSuccess :: [Either String Int] -> Either String Int
-sumSuccess = todo
+sumSuccess [] = Left "no data"
+sumSuccess xs = if length rs > 0 then Right (sum rs) else Left "no data"
+  where rs = rights xs
 
 ------------------------------------------------------------------------------
 -- Ex 6: A combination lock can either be open or closed. The lock
@@ -108,30 +124,34 @@ sumSuccess = todo
 --   isOpen (open "0000" (lock (changeCode "0000" (open "1234" aLock)))) ==> True
 --   isOpen (open "1234" (lock (changeCode "0000" (open "1234" aLock)))) ==> False
 
-data Lock = LockUndefined
+data Lock = Closed String | Open String
   deriving Show
 
 -- aLock should be a locked lock with the code "1234"
 aLock :: Lock
-aLock = todo
+aLock = Closed "1234"
 
 -- isOpen returns True if the lock is open
 isOpen :: Lock -> Bool
-isOpen = todo
+isOpen (Open _) = True
+isOpen (Closed _) = False
 
 -- open tries to open the lock with the given code. If the code is
 -- wrong, nothing happens.
 open :: String -> Lock -> Lock
-open = todo
+open attempt (Closed code) = if code == attempt then Open code else Closed code
+open attempt (Open code) = Open code
 
 -- lock closes a lock. If the lock is already closed, nothing happens.
 lock :: Lock -> Lock
-lock = todo
+lock (Open code)  = Closed code
+lock (Closed code) = Closed code
 
 -- changeCode changes the code of an open lock. If the lock is closed,
 -- nothing happens.
 changeCode :: String -> Lock -> Lock
-changeCode = todo
+changeCode code (Closed _code) = Closed _code
+changeCode code (Open _code) = Open code
 
 ------------------------------------------------------------------------------
 -- Ex 7: Here's a type Text that just wraps a String. Implement an Eq
@@ -149,6 +169,12 @@ changeCode = todo
 data Text = Text String
   deriving Show
 
+instance Eq Text where
+  Text "" == Text "" = True
+--Text xs == Text ys = xs == ys
+  Text xs == Text ys = xs' == ys'
+    where xs' = filter (\x -> not (isSpace x)) xs
+          ys' = filter (\y -> not (isSpace y)) ys
 
 ------------------------------------------------------------------------------
 -- Ex 8: We can represent functions or mappings as lists of pairs.
@@ -182,48 +208,70 @@ data Text = Text String
 --       ==> [("a",1),("b",2)]
 
 compose :: (Eq a, Eq b) => [(a,b)] -> [(b,c)] -> [(a,c)]
-compose = todo
+compose _ [] = []
+compose [] _ = []
+compose ((x,y):xs) ys = if checkMaybe lookedUp then (x,y') : compose xs ys else compose xs ys
+  where lookedUp = lookup y ys
+        y' = extractMaybe lookedUp
+
+checkMaybe :: Maybe a -> Bool
+checkMaybe Nothing = False
+checkMaybe (Just _) = True
+
+extractMaybe :: Maybe a -> a
+extractMaybe (Just x) = x
 
 ------------------------------------------------------------------------------
--- Ex 9: Reorder a list using a list of indices.
+-- Ex 9: Reorder a list using an [(Int,Int)] mapping.
 --
--- You are given a list of indices (numbers from 0 to n) and an input
--- list (of length n). Each index in the index list tells you where to
--- place the corresponding element from the input list in the output
--- list.
+-- Given a list of mappings [(from,to)], reorder the list so that the element
+-- at the first index (from) goes to the second index (to). You may assume
+-- that the list is ordered with respect to the first index (e.g.
+-- [(0,0),(1,1),(2,2)], [(0,1),(1,0),(2,2)], [(0,1),(1,2),(2,0)], etc.). You
+-- may also assume that for a list of length n, every number from 0 to n - 1
+-- (inclusive) appears exactly once as the first index (from) and once as the
+-- second index (to).
 --
--- For example, if the 3rd element of the index list is 7, and the 3rd
--- element of the input list is 'a', the output list should have 'a'
--- at index 7.
+-- (Mappings of this kind are known as permutations in math, see
+-- https://en.wikipedia.org/wiki/Permutation)
 --
--- (The index lists discussed in this exercise correspond to permutations in
--- math. In fact, permutations can be multiplied which is a special case of
--- the compose function in the previous exercise. For more information on
--- permutations, see https://en.wikipedia.org/wiki/Permutation)
+-- Implement the function permute that performs the reordering.
 --
 -- Examples:
---   permute [0,1] [True, False] ==> [True, False]
---   permute [1,0] [True, False] ==> [False, True]
---   permute [0,1,2,3] "hask" ==> "hask"
---   permute [2,0,1,3] "hask" ==> "ashk"
---   permute [1,2,3,0] "hask" ==> "khas"
---   permute [2, 1, 0] (permute [2, 1, 0] "foo") ==> "foo"
---   permute [1, 0, 2] (permute [0, 2, 1] [9,3,5]) ==> [5,9,3]
---   permute [0, 2, 1] (permute [1, 0, 2] [9,3,5]) ==> [3,5,9]
---   permute ([0, 2, 1] `multiply` [1, 0, 2]) [9,3,5] ==> [5,9,3]
---   permute ([1, 0, 2] `multiply` [0, 2, 1]) [9,3,5] ==> [3,5,9]
+--   permute [(0,0),(1,1)] [True, False] ==> [True, False]
+--   permute [(0,1),(1,0)] [True, False] ==> [False, True]
+--   permute [(0,0),(1,1),(2,2),(3,3),(4,4)] "curry" ==> "curry"
+--   permute [(0,4),(1,3),(2,2),(3,1),(4,0)] "curry" ==> "yrruc"
+--   permute [(0,2),(1,1),(2,0),(3,3),(4,4)] "curry" ==> "rucry"
+--   permute [(0,2),(1,1),(2,0)] (permute [(0,2),(1,1),(2,0)] "foo")
+--     ==> "foo"
+--   permute [(0,1),(1,0),(2,2)] (permute [(0,0),(1,2),(2,1)] [9,3,5])
+--     ==> [5,9,3]
+--   permute [(0,0),(1,2),(2,1)] (permute [(0,1),(1,0),(2,2)] [9,3,5])
+--     ==> [3,5,9]
+--   permute ([(0,0),(1,2),(2,1)] `compose` [(0,1),(1,0),(2,2)]) [9,3,5]
+--     ==> [5,9,3]
+--   permute ([(0,1),(1,0),(2,2)] `compose` [(0,0),(1,2),(2,1)]) [9,3,5]
+--     ==> [3,5,9]
 
--- A type alias for index lists.
-type Permutation = [Int]
+type Permutation = [(Int,Int)]
 
--- Permuting a list with the identity permutation should change nothing.
-identity :: Int -> Permutation
-identity n = [0 .. n - 1]
+{-
+permute :: Permutation -> [a] -> [a]
+permute _ [] = []
+permute [] ys = []
+permute ((x,y):xs) ys = ys!!y : permute xs ys
 
--- This function shows how permutations can be composed. Do not edit this
--- function.
-multiply :: Permutation -> Permutation -> Permutation
-multiply p q = map (\i -> p !! (q !! i)) (identity (length p))
+permute xs ys = permute' xs ys []
+permute' :: Permutation -> [a] -> [a] -> [a]
+permute' ((x,y):xs) ys zs = 
+-}
 
 permute :: Permutation -> [a] -> [a]
-permute = todo
+permute _ [] = []
+permute [] ys = []
+permute ((x,y):xs) ys = todo
+
+insertAt :: a -> Int -> [a] -> [a]
+insertAt newElement 0 xs = newElement : (tail xs)
+insertAt newElement i (x:xs) = x : insertAt newElement (i - 1) xs
